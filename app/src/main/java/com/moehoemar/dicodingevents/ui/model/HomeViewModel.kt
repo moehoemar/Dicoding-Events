@@ -1,0 +1,81 @@
+package com.moehoemar.dicodingevents.ui.model
+
+
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import com.moehoemar.dicodingevents.data.EventRepository
+import com.moehoemar.dicodingevents.data.Result
+import com.moehoemar.dicodingevents.data.local.entity.EventEntity
+import com.moehoemar.dicodingevents.util.EventWrapper
+
+class HomeViewModel(private val eventRepository: EventRepository) : ViewModel() {
+
+
+
+    private val _listEventUpcoming = MutableLiveData<List<EventEntity>>()
+    val listEventUpcoming: LiveData<List<EventEntity>> = _listEventUpcoming
+
+    private val _listEventFinished = MutableLiveData<List<EventEntity>>()
+    val listEventFinished: LiveData<List<EventEntity>> = _listEventFinished
+
+    private val _isLoading = MutableLiveData<Boolean>()
+    val isLoading: LiveData<Boolean> = _isLoading
+
+    private val _errorMessage = MutableLiveData<EventWrapper<String>>()
+    val errorMessage: LiveData<EventWrapper<String>> = _errorMessage
+
+    init {
+        fetchEventUpcoming()
+        fetchEventFinished()
+    }
+
+    private fun fetchEventUpcoming() {
+        _isLoading.value = true
+
+        eventRepository.fetchUpcomingEvents().observeForever { result ->
+            when (result) {
+                is Result.Loading -> _isLoading.value = true
+                is Result.Success -> {
+                    _isLoading.value = false
+                    _listEventUpcoming.value = result.data
+                }
+
+                is Result.Error -> {
+                    _isLoading.value = false
+                    _errorMessage.value = EventWrapper("Error: ${result.error}")
+                }
+            }
+        }
+    }
+
+
+
+    private fun fetchEventFinished() {
+        _isLoading.value = true
+
+        eventRepository.fetchFinishedEvents().observeForever { result ->
+            when (result) {
+                is Result.Loading -> _isLoading.value = true
+                is Result.Success -> {
+                    _isLoading.value = false
+                    _listEventFinished.value = result.data
+                }
+
+                is Result.Error -> {
+                    _isLoading.value = false
+                    _errorMessage.value = EventWrapper("Error: ${result.error}")
+                }
+            }
+        }
+    }
+
+    suspend fun saveEvent(event: EventEntity) {
+        eventRepository.setEventFavorite(event, true)
+    }
+
+    suspend fun deleteEvent(event: EventEntity) {
+        eventRepository.setEventFavorite(event, false)
+    }
+
+}
